@@ -1,0 +1,7 @@
+node_modules/
+npm-debug.log*
+.DS_Store
+._*
+*.tgz
+dist/
+.ai-workflow-suite.local/

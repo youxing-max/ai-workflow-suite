@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "project": "",
+  "currentStage": "brainstorm",
+  "currentMilestone": null,
+  "currentWave": null,
+  "currentSlice": null,
+  "gateStatus": {
+    "project": "pending",
+    "slice": "pending",
+    "release": "pending"
+  },
+  "headless": false,
+  "pendingDecisions": [],
+  "blockers": [],
+  "lastUpdated": "",
+  "lastHandoff": null
+}

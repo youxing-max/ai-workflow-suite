@@ -1,0 +1,43 @@
+{
+  "name": "ai-workflow-suite",
+  "version": "1.0.0",
+  "description": "Six-stage AI development workflow skills (Brainstorm -> Design -> Plan -> Execute -> Verify -> Ship) plus a project command layer for Claude Code, Codex CLI, omp and friends. Install with npx.",
+  "keywords": [
+    "ai-workflow",
+    "skills",
+    "claude-code",
+    "codex",
+    "agent-skills",
+    "harness",
+    "prompt-engineering",
+    "cli"
+  ],
+  "license": "MIT",
+  "bin": {
+    "ai-workflow-suite": "bin/cli.js"
+  },
+  "files": [
+    "bin/cli.js",
+    "skills",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=16"
+  },
+  "scripts": {
+    "check": "node bin/cli.js --list",
+    "prepublishOnly": "npm run check"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/youxing-max/ai-workflow-suite.git"
+  },
+  "homepage": "https://github.com/youxing-max/ai-workflow-suite#readme",
+  "bugs": {
+    "url": "https://github.com/youxing-max/ai-workflow-suite/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

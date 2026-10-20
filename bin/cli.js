@@ -96,6 +96,10 @@ function copyTree(src, dest) {
   }
 }
 
+function writeMarker(dir, meta) {
+  fs.writeFileSync(path.join(dir, MARKER), JSON.stringify(meta, null, 2) + '\n');
+}
+
 function removeTree(dir) {
   fs.rmSync(dir, { recursive: true, force: true });
 }
@@ -166,7 +170,15 @@ function install(target, opts) {
   fs.mkdirSync(skillsRoot, { recursive: true });
 
   const existing = new Map(installedSkillsAt(skillsRoot).map((s) => [s.name, s]));
-  const report = { target: target ? target.id : 'custom', root: skillsRoot, added: [], updated: [], unchanged: [], skipped: [] };
+  const report = {
+    target: target ? target.id : 'custom',
+    root: skillsRoot,
+    added: [],
+    updated: [],
+    unchanged: [],
+    restamped: [],
+    skipped: [],
+  };
 
   const srcFp = treeFingerprint(SKILLS_SRC);
 
@@ -176,6 +188,12 @@ function install(target, opts) {
     const prior = existing.get(name);
 
     if (prior && prior.meta.fingerprint && prior.meta.fingerprint === srcFp && !opts.force) {
+      // Content is already current, but the recorded version can lag behind a
+      // release that only bumped package.json - re-stamp so --list tells the truth.
+      if (prior.meta.version !== PKG.version) {
+        writeMarker(dest, Object.assign({}, prior.meta, { version: PKG.version, restampedAt: new Date().toISOString() }));
+        report.restamped.push(name);
+      }
       report.unchanged.push(name);
       continue;
     }
@@ -184,10 +202,7 @@ function install(target, opts) {
       continue;
     }
     copyTree(src, dest);
-    fs.writeFileSync(
-      path.join(dest, MARKER),
-      JSON.stringify({ name, version: PKG.version, fingerprint: srcFp, installedAt: new Date().toISOString() }, null, 2) + '\n'
-    );
+    writeMarker(dest, { name, version: PKG.version, fingerprint: srcFp, installedAt: new Date().toISOString() });
     if (prior) report.updated.push(name);
     else report.added.push(name);
   }
@@ -205,6 +220,9 @@ function printInstall(report, label) {
   line('installed', report.added, green);
   line('updated  ', report.updated, yellow);
   line('unchanged', report.unchanged, dim);
+  if (report.restamped.length) {
+    process.stdout.write(`  ${dim(`re-stamped ${report.restamped.length} skill(s) to v${PKG.version}`)}\n`);
+  }
   for (const s of report.skipped) {
     process.stdout.write(`  ${red('skipped')} ${s.name} - ${s.reason} (use --force to overwrite)\n`);
   }

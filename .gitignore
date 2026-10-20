@@ -5,3 +5,5 @@ npm-debug.log*
 *.tgz
 dist/
 .ai-workflow-suite.local/
+# never commit an auth token
+.npmrc

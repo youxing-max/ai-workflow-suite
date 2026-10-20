@@ -8,36 +8,44 @@ Works with any tool that reads a `skills/` directory containing `SKILL.md`: **Cl
 
 ## Install
 
-One command, no global install, no config files to edit:
+Install the CLI globally, then run it once:
 
 ```bash
-npx ai-workflow-suite
+npm install -g ai-workflow-suite
+ai-workflow-suite
 ```
 
-It detects which tools you already have (`~/.claude`, `~/.codex`, `~/.omp`, `~/.agents`, `~/.qoder-cn`) and drops the skills into each one's skills directory. Nothing is written for tools you do not have.
+It detects which tools you already have (`~/.claude`, `~/.codex`, `~/.omp`, `~/.agents`, `~/.qoder-cn`) and drops the skills into each one's skills directory. Nothing is written for tools you do not have. No config file to edit, no restart of the installer needed.
 
 Target specific tools only:
 
 ```bash
-npx ai-workflow-suite claude codex omp
+ai-workflow-suite claude codex omp
 ```
 
 Install into an explicit directory (a repo-local `.claude/skills`, for example):
 
 ```bash
-npx ai-workflow-suite --dir ./skills
+ai-workflow-suite --dir ./skills
+```
+
+Prefer not to keep a global command? The same CLI runs as a one-off download:
+
+```bash
+npx ai-workflow-suite
 ```
 
 Restart the tool, then invoke a skill by name — every skill in this suite is **human-triggered**, the model will not route to them on its own.
 
 ## Update / uninstall
 
-Re-run the same command to update in place:
+Pull the newest skills and re-run — only what changed gets rewritten:
 
 ```bash
-npx ai-workflow-suite            # updates only what changed
-npx ai-workflow-suite --list     # what is installed, where, which version
-npx ai-workflow-suite --uninstall
+npm install -g ai-workflow-suite@latest
+ai-workflow-suite                # updates in place
+ai-workflow-suite --list         # what is installed, where, which version
+ai-workflow-suite --uninstall
 ```
 
 The CLI only rewrites directories it installed itself (marked by a `.ai-workflow-suite` file inside each skill). If a same-named directory is yours, it is skipped unless you pass `--force`.
@@ -80,9 +88,10 @@ The six stages are a **risk map**, not a pipeline: put artifacts and gates where
 czm《从 AI 写代码到 AI 工作流 · 六阶段》的 skill 套件：主 skill（`ai-workflow`，单需求导航地图）+ 9 个项目模块（`ai-workflow-*`，大型项目指挥层）。全部人工触发，不参与模型自动路由。
 
 ```bash
-npx ai-workflow-suite              # 自动检测并安装到已存在的工具目录
-npx ai-workflow-suite claude codex omp
-npx ai-workflow-suite --uninstall
+npm install -g ai-workflow-suite
+ai-workflow-suite                  # 自动检测并安装到已存在的工具目录
+ai-workflow-suite claude codex omp # 只装指定工具
+ai-workflow-suite --uninstall
 ```
 
 安装位置：Claude Code `~/.claude/skills`、Codex `~/.codex/skills`、omp `~/.omp/agent/skills`、通用 `~/.agents/skills`。内部引用按各自目录自定位解析，无需改路径。

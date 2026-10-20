@@ -153,7 +153,7 @@ function resolveTargets(specified) {
   if (!found.length) {
     die(
       `No supported agent tool detected in ${home()}.\n` +
-        `Pass a target explicitly, e.g. \`npx ${PKG.name} claude\`, or --dir <skills path>.`
+        `Pass a target explicitly, e.g. \`${PKG.name} claude\`, or --dir <skills path>.`
     );
   }
   return found;
@@ -258,12 +258,17 @@ function help() {
 
 Install the ai-workflow skill suite into your agent tools' skills directory.
 
+${bold('Install')}
+  npm install -g ${PKG.name}
+
 ${bold('Usage')}
-  npx ${PKG.name}                     auto-detect tools and install everywhere
-  npx ${PKG.name} claude codex omp     install into the named tools only
+  ${PKG.name}                     auto-detect tools and install everywhere
+  ${PKG.name} claude codex omp     install into the named tools only
   ${PKG.name} --list                  show bundled skills and detected targets
   ${PKG.name} --uninstall [targets]    remove managed skills
   ${PKG.name} --dir <path>            install into an explicit skills root
+
+  One-off without a global install: npx ${PKG.name}
 
 ${bold('Flags')}
   --to, --target <ids>   comma or space separated: ${TARGETS.map((t) => t.id).join(', ')}, all

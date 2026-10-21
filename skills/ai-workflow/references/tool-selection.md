@@ -29,7 +29,7 @@
 
 ## 六套工作流对比
 
-> **证据边界**：机制来自各项目官方仓库与原文的源码证据卡；阶段强弱与适用场景是原文作者为讲解所做的映射，**不是项目官方评级**。采用前仍需核对当前版本文档。
+> **证据边界**：机制一栏来自各项目官方仓库与本机已装的 skill 文件；阶段强弱与适用场景是本表为讲解所做的映射，**不是项目官方评级**。采用前仍需核对当前版本文档。
 
 | 工作流 | 定位 | 更突出的阶段 | 控制方式 | 典型规模 | 跨会话 | 人工介入 | 维护成本 | 更适合解决 |
 |---|---|---|---|---|---|---|---|---|
@@ -60,7 +60,7 @@
 | Matt Pocock 全套（grilling、to-spec、to-tickets、implement、code-review、handoff、tdd、prototype、retro、triage、wayfinder 等） | 小型可组合 stage skill | 六站各自的最小 Skill；ask-matt 是它的套件路由 |
 | OpenSpec 全套（openspec-*） | spec-first 变更合同 | 主要覆盖 Design / Plan / Ship（规范记忆） |
 | loopforge | Goal 门驱动 + 职责隔离交付闭环 | 重型全流程：从零要一个"定门→拷问→SRS→设计→Loop→双轮审计"的闭环时直接用它，不必再拼六站 |
-| ai-workflow-* 套件（project / init / state / plan / execute / verify / recover / ship / review） | 大型项目指挥层：持久化状态、里程碑与 Wave 调度、跨会话恢复、三轴审计 | 六阶段方法论的项目级扩展（对应文章 Trellis"项目状态与记忆"+ GSD"长任务分段"的职责）；状态与 Gate 可机器判定（validate_state.py）；全部人工触发 |
+| ai-workflow-* 套件（project / init / state / plan / execute / verify / recover / ship / review） | 大型项目指挥层：持久化状态、里程碑与 Wave 调度、跨会话恢复、三轴审计 | 六阶段方法论的项目级扩展，自研；承担 Trellis"项目状态与记忆"+ GSD"长任务分段"各自的职责；状态与 Gate 可机器判定（validate_state.py）；全部人工触发 |
 | web-access | 联网操作 | 辅助能力，非阶段工具 |
 
 **组合原则**：组合前先确认**机制没有重复**，否则只会增加维护面——例如（本机判断）loopforge 的双轮审计与 code-review 的双轴 Review 是重叠机制，同一趟任务二选一；ai-workflow-* 套件承担了 Trellis/GSD 的项目状态与长任务分段职责，若将来引入这两者，同样二选一。也可以一个框架都不装，只把经常出问题的阶段写成自己的 Skill 和 Checklist。
@@ -79,8 +79,8 @@ python3 <套件根>/ai-workflow-state/tools/sync.py
 
 先找到最常失控的阶段，补一个合适的 Skill、Artifact 或 Gate，**连续用两周并记录返工和 Review 遗漏**。没有改善，就删掉或调整；有效，再考虑引入更完整的工作流。省掉的提问、拆分和审查从来不会真正消失，只会推迟到更贵的地方出现：PR 评审、线上事故、下一个人的第一周。
 
-## 来源
+## 参考的外部工作流
 
-czm《从 AI 写代码到 AI 工作流 · 一次需求的两条命，和救回它的六个阶段》：https://czm15053.github.io/ai-workflow-six-stages/
+本套件自研，下列是它做组合映射时参考过的开源工作流与 Skill 仓库（可替换，不构成依赖）：
 
 六套工作流与一组小 Skill 仓库：[mattpocock/skills](https://github.com/mattpocock/skills) · [Fission-AI/OpenSpec](https://github.com/Fission-AI/OpenSpec) · [obra/superpowers](https://github.com/obra/superpowers) · [mindfold-ai/Trellis](https://github.com/mindfold-ai/Trellis) · [gsd-build/get-shit-done](https://github.com/gsd-build/get-shit-done) · [bmad-code-org/BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD) · [Yeachan-Heo/oh-my-claudecode](https://github.com/Yeachan-Heo/oh-my-claudecode)

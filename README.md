@@ -4,7 +4,7 @@
 
 一句话讲清它干什么：**不是让 AI 更聪明，是让 AI 别自作主张，并且让别人能验收。**
 
-czm《从 AI 写代码到 AI 工作流 · 六阶段》的配套 skill 套件。
+本套件为自研：六阶段规则、状态校验器和 CLI 安装器都在这个仓库里独立维护，不依附任何外部课程、专栏或第三方 skill 包。
 
 ---
 
@@ -444,6 +444,6 @@ Non-negotiable, in any mode: product trade-offs, legal/compliance wording, loss-
 
 ## Source & license
 
-Contents follow czm's course《从 AI 写代码到 AI 工作流 · 六阶段》. The CLI installer in `bin/` is original to this repository. MIT licensed.
+Self-contained and originally authored: the stage rules, the state validator (`validate_state.py`), the sync tool (`sync.py`) and the CLI installer in `bin/` are all developed in this repository. MIT licensed.
 
 Documentation in this README is taken from the skill files themselves: stage rules from `skills/ai-workflow/references/stage-*.md`, lessons from `references/lessons.md`, validator rules from `skills/ai-workflow-state/tools/validate_state.py` and `references/state-schema.md`, sync semantics from `skills/ai-workflow-state/tools/sync.py`. Command lines are copied verbatim from those files' usage text.

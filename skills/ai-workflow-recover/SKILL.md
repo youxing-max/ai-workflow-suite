@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # AI Workflow Recover · 跨会话恢复
 
-对应文章症状"接手的人总要翻聊天记录"；"会话崩溃、材料只留在聊天记录"为主 skill 补充的诊断行（非文章原文）。恢复的目标：**新 Agent 不读旧聊天，也能接着干**。
+针对两类失控："接手的人总要翻聊天记录"和"会话崩溃/中断，材料只留在聊天记录"（症状诊断表见主 skill ai-workflow 的 references/tool-selection.md）。恢复的目标：**新 Agent 不读旧聊天，也能接着干**。
 
 ## 恢复步骤
 
@@ -19,7 +19,7 @@ disable-model-invocation: true
 ## 预防（比恢复更重要）
 
 - 每会话结束按 `/ai-workflow-state` 写状态，不等"做完再说"；
-- 上下文用到约七成即写 handoff（本套件经验阈值；文章原则是"跨会话随时 Handoff，不必等到 Ship"）；
+- 上下文用到约七成即写 handoff（本套件经验阈值；原则是跨会话随时 Handoff，不必等到 Ship）；
 - `docs/ai-workflow/` 进 Git——恢复包本身就是提交历史的一部分。
 
 ## 完成标准

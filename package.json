@@ -1,6 +1,6 @@
 {
   "name": "ai-workflow-suite",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Six-stage AI development workflow skills (Brainstorm -> Design -> Plan -> Execute -> Verify -> Ship) plus a project command layer for Claude Code, Codex CLI, omp and friends. Install with npm.",
   "keywords": [
     "ai-workflow",

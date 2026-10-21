@@ -16,7 +16,7 @@ disable-model-invocation: true
 | Spec | 需求覆盖：每条 FR/规则可追溯到切片与验收断言；Out of Scope 未被偷做 | project.md + Spec + tasks.json |
 | State | 状态可信：文件与实际一致、证据链完整、无伪造迁移、待确认项未过期 | validate_state.py（路径见主 skill「安装与定位」节） + evidence/ + git |
 
-（Standards/Spec 两轴承自文章双轴 Review（文 711-761），State 轴为套件新增；对抗审查风格——fresh 上下文、分诊不判决、误报人过滤——取 BMAD（文 772）。）
+（三轴是本套件的设计：Standards 管代码质量、Spec 管需求覆盖、State 管状态可信度——第三轴针对"多会话长任务"才需要，单独校验。对抗审查的执行方式——fresh 上下文、分诊不判决、误报交人过滤——参考 BMAD 的角色分工。）
 
 ## 步骤
 

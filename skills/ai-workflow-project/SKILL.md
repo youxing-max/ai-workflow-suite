@@ -51,4 +51,4 @@ init（建状态）→ project.md（目标/非目标/成功指标）→ 切片�
 
 ---
 
-来源：本套件是 ai-workflow 六阶段（czm 文章，见主 skill「来源」节）的项目级扩展；状态目录与 Journal 对应文章 Trellis 的做法，Wave 与计划工件对应 GSD，三轴审计的前两轴（Standards/Spec）承自文章的双轴 Review、State 轴为新增、对抗审查风格取 BMAD，机器可判定 Gate（validate_state.py）为本套件新增。验收面规则（verify「观察面对齐」与 plan「acceptance 维度检查」）源自本套件实测经验（见 lessons #11），非文章规定。
+来源：本套件自研，是 ai-workflow 六阶段的项目级扩展（方法论见主 skill「来源」节）。状态目录与 Journal、Wave 与计划工件、三轴审计、对抗审查这些**形态**在开源工作流（Trellis / GSD / BMAD）里各有近亲，本套件按自己的机制重新定义：机器可判定 Gate（`validate_state.py`）、State 轴、验收面规则（verify「观察面对齐」与 plan「acceptance 维度检查」）为本套件自有设计，其中验收面规则来自本套件实测经验（见 lessons #11）。

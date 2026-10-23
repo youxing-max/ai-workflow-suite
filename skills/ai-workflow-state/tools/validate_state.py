@@ -8,6 +8,7 @@
 import json
 import os
 import re
+import subprocess
 import sys
 
 REQUIRED_FILES = ["project.md", "state.json", "tasks.json", "milestones.json",
@@ -23,6 +24,13 @@ NEEDS_EVIDENCE = {"verified", "shipped"}
 EVIDENCE_DIR = "docs/ai-workflow/evidence/"
 # 关联决策未 approved 时，任务只允许停在的状态（主 skill 不可豁免条④的机器化）
 DECISION_GATED_STATUSES = {"proposed", "blocked"}
+# 审查轮次封顶（收敛纪律的机器化）：超限且未收口的任务必须交人重审
+MAX_REVIEW_ROUNDS = 3
+REVIEW_ROUND_EXEMPT = {"verified", "shipped", "cancelled"}
+# 风险档位 → 人类签字人数下限（按改动本身的风险，不看代码谁写的；Agent 的"通过"不占名额）
+RISK_TIER_APPROVERS = {"low": 1, "medium": 2, "high": 3}
+NON_HUMAN_APPROVERS = {"agent", "ai", "bot", "llm", "assistant", "copilot"}
+SHA_RE = re.compile(r"^[0-9a-fA-F]{7,40}$")
 
 
 def _depth_exceeded(obj, limit=100):
@@ -183,6 +191,119 @@ def find_cycles(tasks_by_id):
     return cycles
 
 
+def _git(root, *args):
+    """跑 git 并返回 (returncode, stdout)；git 不可用或输出无法解码时返回 None（不抛异常）。"""
+    try:
+        r = subprocess.run(["git", "-C", root] + list(args), capture_output=True,
+                           text=True, encoding="utf-8", errors="replace", timeout=30)
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return None
+    return r.returncode, r.stdout
+
+
+def _norm(p):
+    return os.path.normpath(p).replace("\\", "/").replace(os.sep, "/")
+
+
+def _changed_after(root, sha, cache):
+    """sha..HEAD 触及的文件集合。返回 (status, paths)，status: ok / no-git / no-repo / bad-sha / git-error。"""
+    sha = sha.lower()
+    if sha in cache:
+        return cache[sha]
+    res = (255, set())
+    probe = _git(root, "rev-parse", "--git-dir")
+    if probe is None:
+        res = ("no-git", set())
+    elif probe[0] != 0:
+        res = ("no-repo", set())
+    elif _git(root, "rev-parse", "--verify", sha + "^{commit}")[0] != 0:
+        res = ("bad-sha", set())
+    else:
+        log = _git(root, "log", "--format=", "--name-only", sha + "..HEAD")
+        if log is None or log[0] != 0:
+            res = ("git-error", set())
+        else:
+            res = ("ok", {p for p in (l.strip() for l in log[1].splitlines()) if p})
+    cache[sha] = res
+    return res
+
+
+def _scope_hit(paths, t):
+    """审批后提交的触及文件与本任务改动面（files 精确 / writeScopes 前缀）求交；无改动面返回 None。"""
+    exact, prefixes = set(), set()
+    for key, into in (("files", exact), ("writeScopes", prefixes)):
+        v = t.get(key)
+        if isinstance(v, list):
+            for p in v:
+                if isinstance(p, str) and p.strip():
+                    into.add(_norm(p))
+    if not exact and not prefixes:
+        return None
+    hit = []
+    for f in sorted(paths):
+        nf = _norm(f)
+        if nf in exact or any(nf == p or nf.startswith(p.rstrip("/") + "/") for p in prefixes):
+            hit.append(f)
+    return hit
+
+
+def _review_gates(t, tid, st, root, sha_cache, errors, warnings):
+    """审查收敛与人工审批档位三项机器检查（字段缺失即不触发，对存量项目零影响）。"""
+    rr = t.get("reviewRounds")
+    if rr is not None:
+        if not isinstance(rr, int) or isinstance(rr, bool) or rr < 0:
+            errors.append(f"tasks.json[{tid}]: reviewRounds 必须是非负整数，实际 {rr!r}")
+        elif rr > MAX_REVIEW_ROUNDS and st not in REVIEW_ROUND_EXEMPT:
+            errors.append(f"tasks.json[{tid}]: reviewRounds={rr} 超过 {MAX_REVIEW_ROUNDS} 轮上限而任务未收口（{st!r}）——满 3 轮不得自行开第 4 轮：转 blocked 并把方案重审记入 decisions.md；人工批准继续后把 reviewRounds 归零")
+    tier_raw = t.get("riskTier")
+    if tier_raw is None:
+        if st in NEEDS_EVIDENCE:
+            warnings.append(f"tasks.json[{tid}]: status={st} 但未标 riskTier——无法核对人类签字人数（发布范围内任务须分档）")
+    else:
+        tier = _enum(tier_raw, set(RISK_TIER_APPROVERS), f"tasks.json[{tid}]: riskTier", errors)
+        if tier:
+            need = RISK_TIER_APPROVERS[tier]
+            apps = t.get("humanApprovers")
+            if apps is None:
+                errors.append(f"tasks.json[{tid}]: 标了 riskTier={tier} 却没有 humanApprovers——档位必须配人类签字名单")
+            elif not isinstance(apps, list) or not all(isinstance(a, str) for a in apps):
+                errors.append(f"tasks.json[{tid}]: humanApprovers 必须是姓名字符串数组，实际 {apps!r}")
+            else:
+                humans, seen = [], set()
+                for a in apps:
+                    name = a.strip()
+                    if not name:
+                        errors.append(f"tasks.json[{tid}]: humanApprovers 含空白名字（签字人必须是可指认的人）")
+                        continue
+                    if name.lower() in NON_HUMAN_APPROVERS:
+                        errors.append(f"tasks.json[{tid}]: humanApprovers 含 {name!r}——Agent 的结论不占人类审批名额，也不能替人签字")
+                        continue
+                    key = name.casefold()
+                    if key not in seen:
+                        seen.add(key)
+                        humans.append(name)
+                if len(humans) < need:
+                    errors.append(f"tasks.json[{tid}]: riskTier={tier} 至少需要 {need} 名人类签字，去重后只有 {len(humans)} 名（{humans}）")
+    ac = t.get("approvedAtCommit")
+    if ac is None:
+        return
+    if not isinstance(ac, str) or not SHA_RE.match(ac):
+        errors.append(f"tasks.json[{tid}]: approvedAtCommit 必须是 7–40 位十六进制提交号，实际 {ac!r}")
+        return
+    status, touched = _changed_after(root, ac, sha_cache)
+    if status == "bad-sha":
+        errors.append(f"tasks.json[{tid}]: approvedAtCommit {ac!r} 在仓库中不存在（审批记录无法核对；浅克隆请先补齐历史）")
+    elif status != "ok":
+        warnings.append(f"tasks.json[{tid}]: approvedAtCommit 未能核对（{status}）——请人工确认签字之后没有新提交触及本任务改动面")
+        return
+    hit = _scope_hit(touched, t)
+    if hit is None:
+        warnings.append(f"tasks.json[{tid}]: 声明了 approvedAtCommit 但任务没有 files/writeScopes，无法判断审批后是否又有改动")
+    elif hit:
+        shown = ", ".join(hit[:5]) + ("…" if len(hit) > 5 else "")
+        errors.append(f"tasks.json[{tid}]: approvedAtCommit={ac} 之后仍有提交触及该任务改动面（{shown}）——前面的签字已失效，重跑验证并重新审批")
+
+
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     as_json = "--json" in sys.argv
@@ -253,6 +374,7 @@ def main():
             if isinstance(_i, str) and _i:
                 valid_ids.add(_i)
     tasks_by_id, seen_ids = {}, set()
+    sha_cache = {}  # 同一 approvedAtCommit 只查一次 git
     for i, t in enumerate(tasks):
         if not isinstance(t, dict):
             errors.append(f"tasks.json: 第 {i} 个任务不是对象（{type(t).__name__}）")
@@ -308,6 +430,7 @@ def main():
                     errors.append(f"tasks.json[{tid}]: evidence {e!r} 不是文件（目录/特殊文件不构成证据）")
                 elif os.path.getsize(ep) == 0:
                     errors.append(f"tasks.json[{tid}]: evidence 文件为空 {e!r}（空文件不构成证据）")
+        _review_gates(t, tid, st, root, sha_cache, errors, warnings)
     for cyc in find_cycles(tasks_by_id):
         errors.append("tasks.json: blockedBy 存在循环依赖: " + " → ".join(cyc))
 

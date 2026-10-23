@@ -37,6 +37,10 @@
   "acceptance": "Given… When… Then…",
   "verify": "npm test -- gifts",
   "requiresDecision": [],
+  "riskTier": "medium",
+  "humanApprovers": ["张三", "李四"],
+  "approvedAtCommit": "1a2b3c4",
+  "reviewRounds": 0,
   "evidence": null,
   "notes": ""
 } ] }
@@ -47,6 +51,10 @@
 - **blockedBy**：只允许引用存在的任务 ID；不允许自环与循环依赖（校验器查环）。
 - **requiresDecision**：可选，决策 ID 数组（指向 decisions.md 的 D00x）。任一引用决策非 `approved` 时，任务状态只允许 `proposed` 或 `blocked`——人工保留决策的机器门禁（校验器强制）。
 - **writeScopes**：同 Wave 并行任务必须互不相交（execute 开工前实测）。
+- **reviewRounds**（可选，非负整数）：本任务已被审查的轮次。>3 且状态不在 `verified`/`shipped`/`cancelled` 时报错——审查必须会结束，满 3 轮转 `blocked` 并把方案重审记进 decisions.md；人工批准继续后把该值归零（校验器不查归零的合法性，由 `/ai-workflow-review` 的 State 轴抽查）。
+- **riskTier / humanApprovers**（可选，成对使用）：`riskTier` ∈ `low` `medium` `high`，人类签字人数下限依次为 1/2/3；`humanApprovers` 是姓名字符串数组，去重后计数，空白名字与 `agent`/`ai`/`bot`/`llm`/`assistant`/`copilot` 一律不算人类（Agent 的结论不占名额）。标了 `riskTier` 就必须给 `humanApprovers`，人数不足报错；分档判据见 verify 模块「风险分档决定要几个人签字」。
+- **approvedAtCommit**（可选，7–40 位十六进制）：人类签字钉住的提交。校验器在该 sha 之后查 `files`（精确）与 `writeScopes`（前缀）是否仍被提交触及——触及即报错（签字已失效，重跑验证与审批）；sha 在仓库中不存在报错；git 不可用/不在仓库中/任务没有改动面时降为 warning 并提示人工核对。
+- **向后兼容**：以上四项均为可选字段，**字段缺失即不触发对应检查**（`verified`/`shipped` 缺 `riskTier` 只给 warning）。存量项目升级校验器后仍应通过。
 - **acceptance / verify**：除 `cancelled` 外必填；verify 必须是可自动执行的命令（无法自动化的观察点拆出去标 `awaiting_human_evidence`）。
 
 ## milestones.json（里程碑与 Wave）
@@ -71,6 +79,8 @@
 - **risks.md**：表格行含状态列；`accepted` 行必须有 owner 与日期（本条校验器不强制，由 `/ai-workflow-review` 的 State 轴抽查）。
 - **sessions/**：`<YYYY-MM-DD>-<slug>.md`，每会话一篇；**handoffs/**：`<YYYY-MM-DDTHHMM>-<slug>.md`；**audits/**：`<YYYY-MM-DD>-<slug>.md`。
 - **evidence/**：`<task-id>-<YYYY-MM-DD>.log`（命令+完整输出）或 `.json`/`.png` 等原始产物。
+- **review-contracts/**（可选，校验器不强制存在）：`<module>.md` 模块审查契约——这个模块"什么叫出事了"（一句大白话）、跳过哪些目录、挑刺上限、发现必须带文件名与行号；也可用仓库根 `REVIEW.md` 写全局版。契约过期本身是 Standards 发现项。
+- **regressions/**（可选，校验器不强制存在）：`<YYYY-MM-DD>-<slug>.md` 错题本——现象、最小复现、判定标准、本该拦住它的那道检查。改规则/提示词/工具/模型前必须全跑历史用例，分数不涨不准保留改动。
 
 ## 与既有约定的一致性
 

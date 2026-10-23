@@ -46,8 +46,8 @@ Artifact 和 Gate 放在不确定性可能失控的位置，而非平均铺满�
 | 2 Design 方案设计 | 需求怎样进入现有系统？ | Spec、设计、必要 ADR | 边界和测试入口已确认 | [stage-2](references/stage-2-design.md) |
 | 3 Plan 任务规划 | 怎样拆成可独立验证的工作？ | 工单、依赖边、验收标准 | 每项任务能说明完成条件 | [stage-3](references/stage-3-plan.md) |
 | 4 Execute 实现执行 | 当前修改有没有短反馈？ | 小步 Diff、测试与运行记录 | 当前切片有新鲜证据 | [stage-4](references/stage-4-execute.md) |
-| 5 Verify 验证审查 | 有什么证据证明做对了？ | 测试输出、双轴 Review 报告 | Blocker 已处理 | [stage-5](references/stage-5-verify.md) |
-| 6 Ship 交付沉淀 | 系统和下一位接手者准备好了吗？ | PR、发布计划、Handoff、经验回流 | 发布和接续路径闭环 | [stage-6](references/stage-6-ship.md) |
+| 5 Verify 验证审查 | 有什么证据证明做对了？这处改动要几个人签字？ | 测试输出、双轴 Review 报告、人类签字 | Blocker 已处理、审查在 3 轮内收口 | [stage-5](references/stage-5-verify.md) |
+| 6 Ship 交付沉淀 | 系统和下一位接手者准备好了吗？出问题能不能关开关退回？ | PR、发布计划（含开关/熔断）、Handoff、经验回流 | 发布和接续路径闭环 | [stage-6](references/stage-6-ship.md) |
 
 六阶段各掐住一类不确定性：Brainstorm 管目标，Design 管系统边界，Plan 管任务规模与依赖，Execute 管实现过程，Verify 管正确性，Ship 管交付与接续。任何一环松动，问题都会顺链下传，在更贵的地方爆掉。
 

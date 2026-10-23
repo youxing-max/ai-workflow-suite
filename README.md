@@ -32,10 +32,10 @@ Artifact 和 Gate 只铺在不确定性最容易失控的地方，不是六段�
 | --- | --- | --- |
 | 1 Brainstorm | 需求没对齐、AI 代你拍板 | 决策记录、业务规则清单 |
 | 2 Design | 边界含糊、"隐藏"只做前端不渲染 | Spec、测试接缝、必要时 ADR |
-| 3 Plan | 任务水平切碎、没有验收断言 | 工单 + 依赖边 + 每单"怎样算完成" |
+| 3 Plan | 任务水平切碎、没有验收断言 | 工单 + 依赖边 + 每单"怎样算完成" + 风险档 |
 | 4 Execute | 一次改十几个文件、测试后补自证 | 小步 Diff + 可重复的运行记录 |
-| 5 Verify | 自称完成、FAIL 被 PASS 平均掉 | 测试输出 + 双轴 Review 报告 |
-| 6 Ship | 交接丢失、敏感信息外流 | PR、一页发布计划、Handoff、经验回流 |
+| 5 Verify | 自称完成、FAIL 被 PASS 平均掉、审三轮还收不了尾 | 测试输出 + 双轴 Review 报告 + 人类签字名单 |
+| 6 Ship | 交接丢失、敏感信息外流、回滚要重新发版 | PR、一页发布计划（含开关与熔断）、Handoff、经验回流 |
 
 ---
 
@@ -155,17 +155,28 @@ Gate：当前切片要有**新鲜、可重复**的证据。
 
 验证者用全新上下文，**重新跑** verify 命令（引用旧输出不算新鲜）。报告分 Standards（合不合规范）和 Spec（有没有做满、有没有偷做范围外的东西）两轴**分列**，禁止合并重排——合并会让 FAIL 被 PASS 平均掉。
 
-风险接受和误报过滤留给你判断。不可自动化的路径标 `awaiting_human_evidence`，UI 行为必须"观察面对齐"而不是只看 HTTP 200。
+风险接受和误报过滤留给你判断。不可自动化的路径标 `awaiting_human_evidence`，UI 行为必须"观察面对齐"而不是只看 HTTP 200（界面类改动把截图和设计稿一起放进 `evidence/`）。
 
-Gate：没有新鲜验证不许称完成；Blocker 没清零不许进发布。
+两条收敛与审批的硬规矩：
+
+- **审查必须会结束**：同一任务最多 3 轮，第 2 轮起只看新增 diff，第 4 轮不许自行打开——满 3 轮转 `blocked` 并把"方案是不是错的"交回给你（`tasks.json.reviewRounds` 由校验器核对）。
+- **风险档决定几个人签字**：`riskTier` = `low` / `medium` / `high`，人类签字下限 1 / 2 / 3；分档只看改动本身的风险（计费、隐私、CI 配置、会被全库抄的架构模式属 `high`），不看代码是谁写的。Agent 的"通过"不占名额；签字之后又推了新提交，前面的审批作废（`humanApprovers` / `approvedAtCommit` 由校验器核对）。
+
+人只审机器审不好的事：该不该做、高危区、会被抄的架构模式、合入前核证据、上线后兜底。纯风格挑刺不上桌。
+
+Gate：没有新鲜验证不许称完成；Blocker 没清零、签字不达标或已失效，不许进发布。
 
 ### 第 7 步：Ship——收口 + 回流
 
 PR、一页发布计划（依赖顺序、回滚、灰度开关写进仓库）、Handoff、经验回流。交接八件事按模板写，四硬条款：**引用而不是复制**、临时材料不放工作区、带上 suggested skills、脱敏裁剪。
 
+发布计划里的回滚必须是**关开关**，不是重新发版一次：开关位置、关闭步骤、关闭之后退回什么状态，三样都写进 `release.md`；合并后先给内部吃几天狗粮，再放外部流量。
+
+**熔断器**：`release.md` 记了一次回滚或线上事故，下一里程碑的人工审批档位整体上调一级（`low`→`medium`→`high`）并强制一次全量审计；解除收紧要人工确认并记进 `decisions.md`。事故同时写进 `regressions/<日期>-<slug>.md`：现象、最小复现、判定标准、本该拦住它的那道检查。这道保险丝没装上之前，不要把更多改动塞进零人工审批通道。
+
 PRD 末尾留"遗留问题"和"数据复盘"两节。Handoff 不只发布时写，跨会话随时写。
 
-Gate：交接存在、引用有效、敏感信息清零。
+Gate：交接存在、引用有效、敏感信息清零、开关与回滚可执行且熔断器已记录。
 
 ---
 
@@ -186,7 +197,7 @@ init（建状态）→ project.md（目标/非目标/成功指标）→ 切片�
 /ai-workflow-init
 ```
 
-它在工作仓库里建出 `docs/ai-workflow/`：复制 7 个常驻文件、建 4 个子目录，已存在的文件不覆盖（`release.md`、`handoff.md` 只作为格式模板，用到时再复制进去）。
+它在工作仓库里建出 `docs/ai-workflow/`：复制 7 个常驻文件、建 4 个子目录，已存在的文件不覆盖（`release.md`、`handoff.md`、`review-contract.md`、`regression.md` 只作为格式模板，用到时再复制进去）。
 
 ```
 docs/ai-workflow/
@@ -194,13 +205,15 @@ docs/ai-workflow/
 ├── state.json        当前阶段、里程碑、三类 gate 状态（机器读）
 ├── roadmap.md        里程碑的人读地图 + 遗留问题 + 数据复盘
 ├── milestones.json   里程碑清单（机器读）
-├── tasks.json        切片任务：acceptance / verify / writeScopes / blockedBy
+├── tasks.json        切片任务：acceptance / verify / writeScopes / blockedBy / riskTier
 ├── decisions.md      D00x 待确认决策（owner + 截止时间）
 ├── risks.md          风险：触发器 / 缓解 / owner
 ├── evidence/         验证证据日志：<task-id>-<日期>.log
 ├── handoffs/         跨会话交接
 ├── sessions/         会话记录
-└── audits/           三轴审计报告
+├── audits/           三轴审计报告
+├── review-contracts/ 模块审查契约（可选，用到再建）
+└── regressions/      错题本（可选，用到再建）
 ```
 
 注意 init 完成后**不会宣称"已经可以开发了"**：它的完成条件是校验器退出码 0 且目标/非目标/owner 三节非空。
@@ -232,7 +245,7 @@ docs/ai-workflow/
 
 ### 第 5 步：里程碑演示 → ship
 
-Release Gate 全绿才准发布：任务全部 `verified`、`blockers` 为空、`requiresDecision` 全部 `approved`、`release.md` 勾选项齐全（顺序/回滚/灰度开关/监控/值班 + 三项人工确认）。
+Release Gate 全绿才准发布：任务全部 `verified`、`blockers` 为空、`requiresDecision` 全部 `approved`、`release.md` 勾选项齐全（顺序/回滚/灰度开关/监控/值班 + 风险接受/灰度方案/发布窗口三项人工确认）；发布范围内每个任务的风险档位与签字人达标、`approvedAtCommit` 之后没有新提交触及该任务；回滚靠关开关（不重新发版）验证过；本周期若有回滚/事故，档位是否已上调一级。
 
 `/ai-workflow-ship` 收口六步：全量 review（审出新 Blocker 会把 release 回置 `blocked`）→ 规范记忆写回 Spec/ADR、过程材料归档 `archive/<日期>-<里程碑>/` → 写 sessions/handoffs → 回填 roadmap 两节 → 经验回流（只收"会反复影响工程判断"的规则）→ 置 `shipped` 后把 `release` 重置为 pending。项目完结补一份"实际结果 vs 当初指标"的对照。
 
@@ -258,7 +271,12 @@ Release Gate 全绿才准发布：任务全部 `verified`、`blockers` 为空、
 - **Spec 轴**：每条功能需求可追溯到切片和验收断言，Out of Scope 有没有被偷做（证据 = `project.md` + Spec + `tasks.json`）；
 - **State 轴**：文件说的和实际做的是不是一致、证据链是否完整、有没有伪造状态（证据 = 校验器 + `evidence/` + git）。
 
-三轴**分列**报告，不做合并也不平均，发现项标 Blocker/Major/Minor + 位置 + 证据，落到 `docs/ai-workflow/audits/<日期>-<slug>.md`，Blocker 同步进 `state.json.blockers`。审计只开 fix 任务不改码，修完重跑到 0 Blocker。
+三轴**分列**报告，不做合并也不平均，发现项标 Blocker/Major/Minor + 严重/顺手改/存量 + 位置 + 证据，落到 `docs/ai-workflow/audits/<日期>-<slug>.md`，Blocker 同步进 `state.json.blockers`。审计只开 fix 任务不改码，修完重跑到 0 Blocker。
+
+另外两件它也会查：
+
+- **审批链抽查**：随机抽 20% 已签字任务，核对 `riskTier` 档位与 `humanApprovers` 人数是否达标、名单里混进了谁、`approvedAtCommit` 之后有没有新提交；
+- **契约与错题本**：`review-contracts/` 里的条目还成立吗（契约过期本身就是发现项，反复误报的改契约而不是改审查者）；改规则、改提示词、换工具或换模型之前，`regressions/` 的历史用例必须全跑一遍，分数不涨的改动不保留。
 
 ---
 
@@ -281,7 +299,11 @@ python3 <套件根>/ai-workflow-state/tools/validate_state.py <project-root> [--
 - `requiresDecision` 引用的决策若不是 `approved`，任务只能停在 `proposed` 或 `blocked`；
 - `currentSlice` / `currentMilestone` 必须在对应 JSON 里真实存在；
 - 同一 Wave 内的任务不得跨 Wave；
-- `release = passed` 联动要求：`blockers` 为空、`release.md` 非空且没有未勾选的复选框（含全角 `［ ］`，围栏代码块内会剥离，未闭合则 fail-closed），并且至少有一个 `[x]`。
+- `release = passed` 联动要求：`blockers` 为空、`release.md` 非空且没有未勾选的复选框（含全角 `［ ］`，围栏代码块内会剥离，未闭合则 fail-closed），并且至少有一个 `[x]`；
+- **审查轮次封顶**：`reviewRounds > 3` 而任务还没收口（不在 `verified`/`shipped`/`cancelled`）报错；
+- **签字人数下限**：标了 `riskTier` 就必须有 `humanApprovers`，去重后 `low` ≥1、`medium` ≥2、`high` ≥3，空白名字和 `agent`/`ai`/`bot`/`llm` 一律不算人类；
+- **审批失效**：`approvedAtCommit` 之后仍有提交触及该任务的 `files`（精确）或 `writeScopes`（前缀）时报错；sha 在仓库里不存在也报错，git 不可用则降为 warning 提示人工核对；
+- 上述三项**都是可选字段**：字段缺失就不触发，`verified`/`shipped` 缺 `riskTier` 只给 warning——老项目的状态文件升级校验器后照样通过。
 
 `docs/ai-workflow/` 里没有 `specs/` 这个目录——`init` 不建它，它只是 `project.md` 里你可以指定的一个存放路径。
 
@@ -304,6 +326,8 @@ python3 <套件根>/ai-workflow-state/tools/validate_state.py <project-root> [--
 3. 接口响应即契约（返回了什么就是什么，别猜）；
 4. 发布与灰度决定、风险接受、以及项目级人工保留决策（产品取舍、法务/合规/隐私口径、资损相关逻辑）**必须人工确认**——无人值守走到这里就停在 `blocked`，不许代批。
 
+人类签字也不因无人值守而免除：headless 会话里 Agent 的"通过"依旧不占审批名额，`medium` / `high` 档任务到 Release Gate 就停 `blocked` 等人。若这一周期已经记了回滚或事故，下一里程碑档位整体上调一级，收紧解除前不要扩大零人工审批的改动面。
+
 ---
 
 ## 十个 skill 各管什么
@@ -314,12 +338,12 @@ python3 <套件根>/ai-workflow-state/tools/validate_state.py <project-root> [--
 | `ai-workflow-project` | 大项目指挥台，只调度不写业务代码 |
 | `ai-workflow-init` | 建 `docs/ai-workflow/`（7 个常驻文件 + 4 个子目录） |
 | `ai-workflow-state` | 会话首尾的状态读写协议 + schema + 校验器 |
-| `ai-workflow-plan` | 里程碑 / Wave 调度与切片拆分 |
+| `ai-workflow-plan` | 里程碑 / Wave 调度与切片拆分、每任务风险分档 |
 | `ai-workflow-execute` | 切片执行调度、四前置、证据回写 |
-| `ai-workflow-verify` | 独立验证（fresh 上下文重跑）+ Release Gate |
+| `ai-workflow-verify` | 独立验证（fresh 上下文重跑）+ 签字分档 + Release Gate |
 | `ai-workflow-recover` | 跨会话 / 崩溃恢复 |
-| `ai-workflow-ship` | 发布收口、归档、经验回流 |
-| `ai-workflow-review` | 三轴项目审计（Standards / Spec / State） |
+| `ai-workflow-ship` | 发布收口、归档、回滚开关与熔断器、经验回流 |
+| `ai-workflow-review` | 三轴项目审计（Standards / Spec / State）+ 模块契约、错题本 |
 
 主 skill 里另带 8 份 references（六个阶段各一份 + `lessons.md` + `tool-selection.md`），`ai-workflow-state` 带 schema 和两个 Python 工具。套件内部引用按"本文件所在目录的父目录"自定位，整套拷到任何 skills 目录都直接成立，不用改路径。
 
@@ -439,6 +463,10 @@ The premise: **Agent = Model + Harness.** Deliveries rarely fail because the mod
 The six stages are a risk map, not a pipeline. Every stage puts a Skill (how the agent must act), an Artifact (confirmed facts, written to disk — not left in chat) and a Gate (when work may continue) exactly where control is most likely to be lost.
 
 Non-negotiable, in any mode: product trade-offs, legal/compliance wording, loss-related logic, release & rollout decisions and accepted risk are **never** decided by the agent. They land in `decisions.md` as open items with an owner, and the related task stays `blocked` — the bundled validator enforces this mechanically.
+
+Reviews have to end. A task gets at most three review rounds before it goes back to a human (`reviewRounds` is checked), and every task carries a risk tier — `low` / `medium` / `high` — that sets the minimum number of **human** approvers (1 / 2 / 3); an agent's "looks good" never counts toward that quota. Approvals are pinned to a commit: `approvedAtCommit` followed by new commits touching that task's files invalidates the sign-off, and the validator catches it. All of these fields are optional, so projects created before this release keep passing.
+
+Rollback means flipping a switch, not shipping again. And if a release rolled back or an incident was recorded, the next milestone's tiers step up one level until a human clears it — no expansion of the zero-human-approval path before that fuse is in place.
 
 `sync.py` mirrors the suite itself across tool roots (for when you edit the skills' source); it does not sync project state, which lives in your repo under `docs/ai-workflow/`.
 

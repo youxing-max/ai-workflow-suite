@@ -19,6 +19,7 @@ disable-model-invocation: true
 - `roadmap.md`：里程碑 → 切片 → 任务的人读地图（含明确 Out of Scope）；
 - `milestones.json` / `tasks.json`：机器可读，字段见 ai-workflow-state 的 schema；
 - 每任务必填：`acceptance`（Given/When/Then）、`verify`（可自动执行的命令）、`files`/`writeScopes`、`blockedBy`。
+- **风险分档 `riskTier`**：拆任务时按改动本身的风险标 `low`/`medium`/`high`（档位判据见 verify「风险分档决定要几个人签字」），决定该任务需要几名人类签字；判不准就高不就低。
 - **契约测试随范围**：任务改变既有响应/接口契约时，锁定该契约的既有测试文件必须一并列入该任务 `writeScopes`——否则实现者被迫在"越界改测试"与"违反新契约"之间二选一（来源：blog-system M1.5 T007 实测）。
 - **acceptance 覆盖维度检查**：对照原始需求逐个形容词/维度过一遍——视觉、交互、性能等要求要么拆进 acceptance 断言，要么显式写入 Out of Scope 请用户确认；用户可见行为的验收断言必须落在需求观察面（见 verify 模块"观察面对齐"），不得全部下沉到 HTTP/API 层。
 
